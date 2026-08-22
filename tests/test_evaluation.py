@@ -1,50 +1,31 @@
-import os
-import sys
-import pytest
-import cv2
+from pathlib import Path
+
 import numpy as np
+from PIL import Image
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.abspath(os.path.join(current_dir, '..'))
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
+from ml.evaluation.evaluate import NO_GROUND_TRUTH_MESSAGE, compute_metrics, evaluate_paths
 
-from ml.evaluation.evaluate import evaluate_prediction
-from ml.baselines.linear import linear_interpolate
 
-@pytest.fixture
-def dummy_triplet(tmp_path):
-    img0 = np.zeros((100, 100, 3), dtype=np.uint8)
-    img2 = np.full((100, 100, 3), 255, dtype=np.uint8)
-    img1_gt = np.full((100, 100, 3), 127, dtype=np.uint8) 
-    
-    path0 = str(os.path.join(tmp_path, "f0.png"))
-    path1 = str(os.path.join(tmp_path, "f1.png"))
-    path2 = str(os.path.join(tmp_path, "f2.png"))
-    
-    cv2.imwrite(path0, img0)
-    cv2.imwrite(path1, img1_gt)
-    cv2.imwrite(path2, img2)
-    
-    return path0, path1, path2
+def _save(path: Path, array: np.ndarray) -> None:
+    Image.fromarray((array * 255).astype(np.uint8), mode="RGB").save(path)
 
-def test_evaluation_metrics():
-    imgA = np.zeros((50, 50, 3), dtype=np.uint8)
-    imgB = np.zeros((50, 50, 3), dtype=np.uint8)
-    
-    res = evaluate_prediction(imgA, imgB)
-    assert res['mae'] == 0.0
-    assert np.isclose(res['ssim'], 1.0)
-    
-    imgC = np.full((50, 50, 3), 255, dtype=np.uint8)
-    res2 = evaluate_prediction(imgA, imgC)
-    assert res2['mae'] == 255.0
 
-def test_linear_baseline(dummy_triplet):
-    f0, f1_gt, f2 = dummy_triplet
-    out = linear_interpolate(f0, f2, 0.5)
-    
-    assert out.shape == (100, 100, 3)
-    # 0.5 * 0 + 0.5 * 255 = 127.5 -> uint8 cast generally truncates to 127 without careful rounding
-    # Wait, our logic: out = (1 - 0.5) * 0 + 0.5 * 255.0 = 127.5. astype(uint8) of 127.5 is 127.
-    assert np.all(out == 127)
+def test_metrics_against_true_middle_and_linear_baseline(tmp_path):
+    frame0 = np.zeros((16, 16, 3), dtype=np.float32)
+    frame1 = np.ones((16, 16, 3), dtype=np.float32)
+    truth = np.full((16, 16, 3), 0.5, dtype=np.float32)
+    prediction = np.full((16, 16, 3), 0.5, dtype=np.float32)
+    paths = [tmp_path / name for name in ("f0.png", "f1.png", "truth.png", "pred.png")]
+    for path, array in zip(paths, (frame0, frame1, truth, prediction)):
+        _save(path, array)
+    result = evaluate_paths(paths[3], paths[2], frame0_path=paths[0], frame1_path=paths[1])
+    assert result["rife"]["mae"] == 0
+    assert result["linear_baseline"]["mae"] < 0.01
+    assert result["linear_baseline"]["psnr"] > 40
+
+
+def test_missing_ground_truth_message(tmp_path):
+    path = tmp_path / "prediction.png"
+    _save(path, np.zeros((4, 4, 3), dtype=np.float32))
+    result = evaluate_paths(path, None)
+    assert result["message"] == NO_GROUND_TRUTH_MESSAGE

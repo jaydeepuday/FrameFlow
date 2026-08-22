@@ -1,8 +1,0 @@
-DATASET LISTING:
-goes_ian.gif | data/satellite\raw\goes_ian.gif | gif | 1000x1000 | Channels: 3 | Size: 37662.63KB | Time: Sat Aug 22 15:29:08 2026
-frame_000.jpg | data/satellite\validation\sequence_001\frame_000.jpg | jpg | 1000x1000 | Channels: 3 | Size: 560.97KB | Time: Sat Aug 22 15:29:09 2026
-frame_001.jpg | data/satellite\validation\sequence_001\frame_001.jpg | jpg | 1000x1000 | Channels: 3 | Size: 561.45KB | Time: Sat Aug 22 15:29:09 2026
-frame_002.jpg | data/satellite\validation\sequence_001\frame_002.jpg | jpg | 1000x1000 | Channels: 3 | Size: 559.59KB | Time: Sat Aug 22 15:29:09 2026
-confidence_map.png | ml/outputs/satellite_evaluation\confidence_map.png | png | 1000x1000 | Channels: 3 | Size: 1392.60KB | Time: Sat Aug 22 15:29:35 2026
-sat_linear.png | ml/outputs/satellite_evaluation\sat_linear.png | png | 1000x1000 | Channels: 3 | Size: 2149.51KB | Time: Sat Aug 22 15:29:34 2026
-visual_comparison.png | ml/outputs/satellite_evaluation\visual_comparison.png | png | 2500x500 | Channels: 3 | Size: 2056.30KB | Time: Sat Aug 22 15:29:36 2026

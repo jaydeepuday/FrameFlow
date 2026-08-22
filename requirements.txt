@@ -1,0 +1,18 @@
+# FrameFlow v1 dependencies.
+# Upstream ECCV2022-RIFE declares numpy<=1.23.5 and torch>=1.6.0. The old
+# NumPy ceiling is not installable on Python 3.14, so the project keeps the
+# model-compatible API while using current Python/PyTorch-compatible ranges.
+# The upstream sk-video and moviepy entries support its optional video/demo
+# scripts; FrameFlow v1 does not import those scripts and therefore omits them.
+numpy>=1.26,<3
+torch>=2.0
+torchvision>=0.15
+Pillow>=10,<13
+opencv-python>=4.8,<5
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+python-multipart>=0.0.9,<1
+scikit-image>=0.22,<1
+tqdm>=4.35
+pytest>=8,<9
+httpx>=0.27,<1

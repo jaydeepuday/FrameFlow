@@ -1,7 +1,0 @@
-File: goes_ian.gif | Path: data/satellite\raw\goes_ian.gif | Format: GIF | Width: 1000 | Height: 1000 | Channels: 3 | Size: 37662.63 KB | Timestamp: Sat Aug 22 15:29:08 2026
-File: frame_000.jpg | Path: data/satellite\validation\sequence_001\frame_000.jpg | Format: JPG | Width: 1000 | Height: 1000 | Channels: 3 | Size: 560.97 KB | Timestamp: Sat Aug 22 15:29:09 2026
-File: frame_001.jpg | Path: data/satellite\validation\sequence_001\frame_001.jpg | Format: JPG | Width: 1000 | Height: 1000 | Channels: 3 | Size: 561.45 KB | Timestamp: Sat Aug 22 15:29:09 2026
-File: frame_002.jpg | Path: data/satellite\validation\sequence_001\frame_002.jpg | Format: JPG | Width: 1000 | Height: 1000 | Channels: 3 | Size: 559.59 KB | Timestamp: Sat Aug 22 15:29:09 2026
-File: confidence_map.png | Path: ml/outputs/satellite_evaluation\confidence_map.png | Format: PNG | Width: 1000 | Height: 1000 | Channels: 3 | Size: 1392.60 KB | Timestamp: Sat Aug 22 15:29:35 2026
-File: sat_linear.png | Path: ml/outputs/satellite_evaluation\sat_linear.png | Format: PNG | Width: 1000 | Height: 1000 | Channels: 3 | Size: 2149.51 KB | Timestamp: Sat Aug 22 15:29:34 2026
-File: visual_comparison.png | Path: ml/outputs/satellite_evaluation\visual_comparison.png | Format: PNG | Width: 2500 | Height: 500 | Channels: 3 | Size: 2056.30 KB | Timestamp: Sat Aug 22 15:29:36 2026

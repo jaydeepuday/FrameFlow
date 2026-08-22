@@ -1,69 +1,90 @@
+"""MAE, PSNR and SSIM evaluation against a real midpoint when available."""
+
+from __future__ import annotations
+
 import argparse
-import sys
-import os
-import time
-import cv2
 import json
+import math
+from pathlib import Path
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-ml_dir = os.path.abspath(os.path.join(current_dir, '..'))
-if ml_dir not in sys.path:
-    sys.path.append(ml_dir)
-
-from skimage.metrics import peak_signal_noise_ratio as compute_psnr
-from skimage.metrics import structural_similarity as compute_ssim
 import numpy as np
+from PIL import Image
 
-def evaluate_prediction(predicted_img_np, ground_truth_img_np):
-    """
-    Computes MAE, PSNR, and SSIM between two normalized RGB numpy images.
-    Returns dictionary with metrics.
-    """
-    if predicted_img_np.shape != ground_truth_img_np.shape:
-        raise ValueError(f"Predicted shape {predicted_img_np.shape} and ground truth shape {ground_truth_img_np.shape} must match")
-        
+
+NO_GROUND_TRUTH_MESSAGE = "Ground truth unavailable — qualitative evaluation only."
+
+
+def load_rgb(path: str | Path) -> np.ndarray:
+    with Image.open(path) as image:
+        return np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
+
+
+def _ssim_fallback(a: np.ndarray, b: np.ndarray) -> float:
+    # Global SSIM fallback keeps evaluation usable when scikit-image is absent.
+    x = a.mean(axis=2)
+    y = b.mean(axis=2)
+    c1, c2 = 0.01**2, 0.03**2
+    ux, uy = float(x.mean()), float(y.mean())
+    vx, vy = float(x.var()), float(y.var())
+    cov = float(((x - ux) * (y - uy)).mean())
+    return ((2 * ux * uy + c1) * (2 * cov + c2)) / ((ux**2 + uy**2 + c1) * (vx + vy + c2))
+
+
+def compute_metrics(prediction: np.ndarray, ground_truth: np.ndarray) -> dict[str, float]:
+    if prediction.shape != ground_truth.shape:
+        raise ValueError(
+            f"Prediction and ground truth dimensions differ: {prediction.shape} vs {ground_truth.shape}."
+        )
+    mae = float(np.mean(np.abs(prediction - ground_truth)))
+    mse = float(np.mean((prediction - ground_truth) ** 2))
+    psnr = float("inf") if mse == 0 else float(10.0 * math.log10(1.0 / mse))
     try:
-        # Ensure we are evaluating on RGB dimension structures
-        if len(ground_truth_img_np.shape) == 2:
-            ground_truth_img_np = cv2.cvtColor(ground_truth_img_np, cv2.COLOR_GRAY2RGB)
-            predicted_img_np = cv2.cvtColor(predicted_img_np, cv2.COLOR_GRAY2RGB)
-            
-        psnr = compute_psnr(ground_truth_img_np, predicted_img_np, data_range=255.0)
-        ssim = compute_ssim(ground_truth_img_np, predicted_img_np, channel_axis=2, data_range=255.0)
-        mae = np.mean(np.abs(predicted_img_np.astype(float) - ground_truth_img_np.astype(float)))
-        
-        return {
-            "mae": float(mae),
-            "psnr": float(psnr),
-            "ssim": float(ssim)
-        }
-    except Exception as e:
-        return {"error": str(e)}
+        from skimage.metrics import structural_similarity
+
+        ssim = float(structural_similarity(ground_truth, prediction, channel_axis=2, data_range=1.0))
+    except ImportError:
+        ssim = _ssim_fallback(prediction, ground_truth)
+    return {"mae": mae, "psnr": psnr, "ssim": ssim}
+
+
+def evaluate_paths(
+    prediction_path: str | Path,
+    ground_truth_path: str | Path | None,
+    *,
+    frame0_path: str | Path | None = None,
+    frame1_path: str | Path | None = None,
+) -> dict:
+    if not ground_truth_path:
+        return {"message": NO_GROUND_TRUTH_MESSAGE, "rife": None, "linear_baseline": None}
+    prediction = load_rgb(prediction_path)
+    ground_truth = load_rgb(ground_truth_path)
+    result = {"message": None, "rife": compute_metrics(prediction, ground_truth), "linear_baseline": None}
+    if frame0_path and frame1_path:
+        frame0, frame1 = load_rgb(frame0_path), load_rgb(frame1_path)
+        if frame0.shape != ground_truth.shape or frame1.shape != ground_truth.shape:
+            raise ValueError("Baseline inputs and ground truth must have matching dimensions.")
+        result["linear_baseline"] = compute_metrics((frame0 + frame1) / 2.0, ground_truth)
+    return result
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Evaluate FrameFlow against a true midpoint")
+    parser.add_argument("--prediction", required=True)
+    parser.add_argument("--ground-truth")
+    parser.add_argument("--frame0")
+    parser.add_argument("--frame1")
+    return parser
+
 
 if __name__ == "__main__":
-    from inference.interpolate import interpolate
-    
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--frame0", required=True)
-    parser.add_argument("--ground-truth", required=False)
-    parser.add_argument("--frame2", required=True)
-    parser.add_argument("--device", default="auto")
-    
-    args = parser.parse_args()
-    
-    result = interpolate(args.frame0, args.frame2, timestep=0.5, device=args.device)
-    
-    if not args.ground_truth or not os.path.exists(args.ground_truth):
-        print("Ground truth unavailable — qualitative evaluation only.")
-        sys.exit(0)
-        
-    gt = cv2.imread(args.ground_truth, cv2.IMREAD_UNCHANGED)
-        
-    pred_path = result["output_path"]
-    pred = cv2.imread(pred_path, cv2.IMREAD_UNCHANGED)
-    
-    metrics = evaluate_prediction(pred, gt)
-    metrics["inference_time_ms"] = result["inference_time_ms"]
-    metrics["device"] = result["device"]
-    
-    print(json.dumps(metrics, indent=2))
+    args = _parser().parse_args()
+    result = evaluate_paths(
+        args.prediction,
+        args.ground_truth,
+        frame0_path=args.frame0,
+        frame1_path=args.frame1,
+    )
+    print(json.dumps(result, indent=2, allow_nan=True))
+    if result["message"]:
+        print(result["message"])
+

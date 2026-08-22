@@ -1,49 +1,60 @@
-import pytest
+from pathlib import Path
+
 from fastapi.testclient import TestClient
-import numpy as np
-import cv2
-import os
-from backend.main import app
 
-@pytest.fixture(scope="module")
-def client():
-    with TestClient(app) as c:
-        yield c
+import backend.main as backend
 
-def test_health_endpoint(client):
-    response = client.get("/health")
+
+class FakeAdapter:
+    model_loaded = True
+    device = "cpu"
+
+
+def _fake_result():
+    return {
+        "output_path": str(Path("C:/internal/secret/frame_t05_generated.png")),
+        "comparison_path": "C:/internal/secret/comparison.png",
+        "confidence_map_path": "C:/internal/secret/confidence_map.png",
+        "flow_visualization_path": None,
+        "device": "cpu",
+        "timestep": 0.5,
+        "inference_time_ms": 12.3,
+        "model_load_time_ms": 3.4,
+        "model_load_count": 1,
+        "input_resolution": {"frame0": {"width": 2, "height": 2}, "frame1": {"width": 2, "height": 2}},
+        "processed_resolution": {"width": 32, "height": 32},
+        "confidence_label": "Model confidence proxy based on interpolation/reconstruction consistency",
+        "generated_label": "AI GENERATED — not a real observation",
+    }
+
+
+def test_health_shape_and_safe_api_response(monkeypatch):
+    monkeypatch.setattr(backend, "get_default_adapter", lambda: FakeAdapter())
+    monkeypatch.setattr(backend, "interpolate", lambda *args, **kwargs: _fake_result())
+    client = TestClient(backend.app)
+    health = client.get("/api/health")
+    assert health.json() == {"status": "ok", "model_loaded": True, "device": "cpu"}
+    payload = {"frame0": ("safe.png", b"not-used", "image/png"), "frame1": ("safe.png", b"not-used", "image/png")}
+    response = client.post("/api/interpolate", files=payload, data={"timestep": "0.5"})
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ok"
-    assert "cuda_available" in data
+    body = response.json()
+    assert "C:/internal" not in response.text
+    assert body["output_urls"]["generated"] == "/api/output/frame_t05_generated.png"
 
-def test_model_info(client):
-    response = client.get("/model/info")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["model_name"] == "ECCV2022-RIFE"
 
-def test_interpolate_invalid_image(client, tmp_path):
-    # Upload a text file as image
-    bad_file = tmp_path / "bad.txt"
-    bad_file.write_text("not an image")
-    
-    # We need to seek to 0 if passing file object multiple times, but better to just open twice
-    with open(bad_file, "rb") as f0, open(bad_file, "rb") as f1:
-        response = client.post("/interpolate", files={"frame0": f0, "frame1": f1}, data={"timestep": 0.5})
-    
-    assert response.status_code == 500 # Should hit our exception wrapper when image load fails
-    
-def test_evaluate_endpoint(client, tmp_path):
-    img = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
-    p = tmp_path / "f.png"
-    cv2.imwrite(str(p), img)
-    
-    with open(p, "rb") as f0, open(p, "rb") as f1, open(p, "rb") as f2:
-        response = client.post("/evaluate", files={"frame0": f0, "ground_truth": f1, "frame2": f2})
-        
-    assert response.status_code == 200
-    data = response.json()
-    assert "mae" in data
-    assert "psnr" in data
-    assert "ssim" in data
+def test_upload_validation_rejects_unsupported_and_oversized(monkeypatch):
+    monkeypatch.setattr(backend, "get_default_adapter", lambda: FakeAdapter())
+    client = TestClient(backend.app)
+    invalid = client.post(
+        "/api/interpolate",
+        files={"frame0": ("bad.tif", b"data", "image/tiff"), "frame1": ("x.png", b"data", "image/png")},
+    )
+    assert invalid.status_code == 415
+    huge = b"x" * (backend.MAX_UPLOAD_BYTES + 1)
+    oversized = client.post(
+        "/api/interpolate",
+        files={"frame0": ("x.png", huge, "image/png"), "frame1": ("x.png", b"data", "image/png")},
+    )
+    assert oversized.status_code == 413
+    assert oversized.json()["detail"]["code"] == "oversized_image"
+

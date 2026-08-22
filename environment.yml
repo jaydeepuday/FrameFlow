@@ -1,0 +1,17 @@
+name: frameflow
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pytorch>=2.0
+  - torchvision>=0.15
+  - numpy>=1.26
+  - pillow>=10
+  - opencv
+  - fastapi
+  - uvicorn
+  - python-multipart
+  - scikit-image
+  - pytest
+

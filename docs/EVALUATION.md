@@ -1,13 +1,14 @@
-# Evaluation Metrics and Baseline
+# Evaluation
 
-## Temporal Framework
-Evaluations calculate the quality of an interpolated midpoint ($t=0.5$) using $I_0$ and $I_2$ compared directly against a known ground-truth $I_1$.
+When a true middle frame is available, `ml/evaluation/evaluate.py` computes:
 
-## Metrics Implemented
-- **MAE (Mean Absolute Error):** Core pixel-wise accuracy index.
-- **PSNR (Peak Signal-to-Noise Ratio):** Standard noise reflection ratio.
-- **SSIM (Structural Similarity Index):** Human-perception aligned structural analysis.
-- **Inference Time:** Hardware runtime tracked in ms.
+- MAE on normalized RGB pixels.
+- PSNR from normalized RGB mean squared error.
+- SSIM using scikit-image when installed, with a documented global-SSIM
+  fallback so the evaluation command remains usable in a minimal environment.
 
-## Linear Baseline
-Evaluated precisely against naive classical $\frac{I_0 + I_2}{2}$ interpolations to measure the distinct value-add of the RIFE neural architecture. Expected to drastically outperform classical linear blending due to flow-awareness.
+`ml/evaluation/baseline.py` evaluates the RIFE result and the classical linear
+midpoint `0.5*T0 + 0.5*T1` using the same metrics. Without ground truth the
+command prints exactly: `Ground truth unavailable — qualitative evaluation
+only.` No fabricated values are emitted.
+
