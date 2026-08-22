@@ -1,0 +1,36 @@
+# Environment details
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Secret / Auth
+.env
+*.pem
+*.key
+
+# Heavy AI Models & Checkpoints
+models/rife/*.pkl
+models/rife/*.pth
+
+# Satellite Telemetry & Unprocessed Data
+data/satellite/raw/
+data/satellite/validation/
+*.nc
+*.gif
+*.mp4
+
+# Local Artifacts & Temp logs
+outputs/
+audit*.txt
+*.log
