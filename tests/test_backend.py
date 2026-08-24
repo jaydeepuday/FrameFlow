@@ -44,6 +44,9 @@ def test_evaluate_endpoint(client, tmp_path):
         
     assert response.status_code == 200
     data = response.json()
-    assert "mae" in data
-    assert "psnr" in data
-    assert "ssim" in data
+    assert "rife_metrics" in data
+    assert "linear_metrics" in data
+    assert "mae" in data["rife_metrics"]
+    assert "psnr" in data["rife_metrics"]
+    assert "ssim" in data["rife_metrics"]
+
