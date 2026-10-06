@@ -48,15 +48,15 @@ def run():
             page.on("response", handle_response)
             
             print("Generating...")
-            page.locator("button.btn").click()
+            page.locator("button.btn-primary").click()
             
-            page.wait_for_selector("text=Results", timeout=15000)
+            page.wait_for_selector("text=Interpolation complete", timeout=30000)
             page.wait_for_timeout(1000)
             
             page.screenshot(path="docs/evidence/3_results_full.png")
             
-            metrics_box = page.locator(".metrics-grid")
-            metrics_box.screenshot(path="docs/evidence/5_metrics_section.png")
+            # Use broader selector for the new Metrics Panel
+            page.locator("text=MAE").locator("..").screenshot(path="docs/evidence/5_metrics_section.png")
             
             rife_time = timing['rife_payload']['inference_time_ms']
             total_time_ms = (timing['end'] - timing['start']) * 1000
@@ -75,7 +75,7 @@ def run():
             file_inputs.nth(0).set_input_files(bad_file_path)
             file_inputs.nth(1).set_input_files(bad_file_path)
             
-            page.locator("button.btn").click()
+            page.locator("button.btn-primary").click()
             page.wait_for_timeout(2000)
             page.screenshot(path="docs/evidence/6_error_flow.png")
             
